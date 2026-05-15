@@ -1268,6 +1268,709 @@ export default Users;
 
 ---
 
+# 21. Axios Params & Query Parameters
+
+# Query Parameters
+
+Everything after:
+
+```text
+?
+```
+
+inside URL is query string.
+
+---
+
+# Example
+
+```text
+/users?page=1&limit=10
+```
+
+---
+
+# Query Param Format
+
+```text
+key=value
+```
+
+Multiple params are separated using:
+
+```text
+&
+```
+
+---
+
+# Important Understanding
+
+Query params are:
+
+```text
+Part of URL
+```
+
+NOT request body.
+
+---
+
+# Axios Params
+
+Axios provides:
+
+```js
+params: {}
+```
+
+inside config.
+
+---
+
+# Example
+
+```js
+axios.get(GETURL, {
+  params: {
+    _limit: 1,
+  },
+});
+```
+
+Axios automatically converts this into:
+
+```text
+?_limit=1
+```
+
+---
+
+# VERY IMPORTANT
+
+Axios only sends params.
+
+Backend/API decides:
+
+```text
+what query param names mean
+```
+
+Example:
+
+```text
+_limit
+_page
+_sort
+```
+
+are supported by JSONPlaceholder API.
+
+---
+
+# IMPORTANT REALIZATION
+
+Frontend developers do NOT invent API contract.
+
+Usually:
+
+```text
+Backend defines API contract.
+Frontend consumes it.
+```
+
+---
+
+# How Developers Know Param Names?
+
+Usually through:
+
+```text
+API documentation
+```
+
+Developers are NOT expected to memorize all query params globally.
+
+---
+
+# Exact Learning Snapshot
+
+```jsx
+import axios from "axios";
+import { useEffect, useState } from "react";
+
+const Users = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const GETURL = "https://jsonplaceholder.typicode.com/users";
+  const POSTURL = "https://jsonplaceholder.typicode.com/users";
+
+  useEffect(() => {
+    const postUser = async () => {
+      try {
+        const response = await axios.post(POSTURL, {
+          name: "leo",
+          email: "leo@gmail.com",
+        });
+
+        console.log("post response: ", response);
+
+      } catch (err) {
+        console.log(`error in POST: ${err}`);
+      }
+    };
+
+    const fetchUser = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        // axios parameters: axios.method(url,data,config)
+        const response = await axios.get(GETURL, {
+          params: {
+            // name of keys are fixed, they are decided by BE
+            _limit: 1,
+          },
+        });
+
+        console.log(response.data);
+        setUsers(response.data);
+
+      } catch (err) {
+        console.log(err.message);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  return (
+    <>
+      <h2> user</h2>
+
+      {loading && <p>...Loading</p>}
+      {error && <p>Error: {error}</p>}
+
+      <ol>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ol>
+    </>
+  );
+};
+
+export default Users;
+```
+
+---
+
+# 22. Axios Interceptors
+
+# What is an Interceptor?
+
+Interceptor means:
+
+```text
+something that runs in-between
+```
+
+before request leaves OR before response reaches component.
+
+---
+
+# Request Flow WITHOUT Interceptor
+
+```text
+Component
+   ↓
+axios request
+   ↓
+backend
+```
+
+---
+
+# WITH Interceptor
+
+```text
+Component
+   ↓
+Interceptor
+   ↓
+axios request
+   ↓
+backend
+```
+
+---
+
+# Request Interceptor
+
+```js
+axios.interceptors.request.use(
+
+   (config) => {
+
+      console.log("Request intercepted");
+
+      return config;
+
+   }
+
+);
+```
+
+---
+
+# Important Understanding
+
+```js
+return config;
+```
+
+means:
+
+```text
+Continue request flow
+```
+
+---
+
+# Interceptor Can Modify Request
+
+Example:
+
+```js
+config.headers["my-custom-header"] =
+   "hello-from-interceptor";
+```
+
+---
+
+# Real-World Usage
+
+Most common use:
+
+```js
+config.headers.Authorization =
+   `Bearer ${token}`;
+```
+
+---
+
+# Without Interceptor
+
+```text
+Every API call manually attaches token.
+```
+
+Example:
+
+```js
+headers: {
+   Authorization: `Bearer ${token}`
+}
+```
+
+This creates:
+
+- repetitive code
+- harder maintenance
+- inconsistent authentication handling
+
+---
+
+# With Interceptor
+
+```text
+Token automatically attached globally.
+```
+
+Example:
+
+```js
+axios.interceptors.request.use((config) => {
+
+   config.headers.Authorization =
+      `Bearer ${token}`;
+
+   return config;
+
+});
+```
+
+Now every axios request automatically carries authentication token centrally.
+
+---
+
+# What is Bearer?
+
+```text
+Bearer
+```
+
+is standard authorization type.
+
+Meaning:
+
+```text
+Whoever carries this token
+is treated as authenticated user.
+```
+
+---
+
+# Where Token Comes From?
+
+Usually from:
+
+```text
+Login API response
+```
+
+---
+
+# Login Flow
+
+```text
+User enters email/password
+   ↓
+Frontend sends login request
+   ↓
+Backend verifies credentials
+   ↓
+Backend generates token
+   ↓
+Backend sends token to frontend
+```
+
+---
+
+# Example Login Response
+
+```json
+{
+   "token": "abc123xyz"
+}
+```
+
+---
+
+# Frontend Stores Token
+
+Usually in:
+
+- localStorage
+- sessionStorage
+- cookies
+
+Example:
+
+```js
+localStorage.setItem("token", data.token);
+```
+
+---
+
+# Response Interceptor
+
+```js
+axios.interceptors.response.use(
+
+   (response) => {
+
+      console.log("Response intercepted");
+
+      return response;
+
+   }
+
+);
+```
+
+---
+
+# Important Understanding
+
+```js
+return response;
+```
+
+means:
+
+```text
+Continue response flow
+```
+
+---
+
+# Error Handling in Response Interceptor
+
+```js
+axios.interceptors.response.use(
+
+   (response) => {
+      return response;
+   },
+
+   (error) => {
+
+      if (error.response.status === 401) {
+         console.log("Session expired");
+      }
+
+      return Promise.reject(error);
+
+   }
+
+);
+```
+
+---
+
+# VERY IMPORTANT
+
+```js
+return Promise.reject(error);
+```
+
+means:
+
+```text
+Continue error flow normally
+```
+
+Without this:
+
+```text
+component catch() may never receive error
+```
+
+---
+
+# Interceptor Syntax Breakdown
+
+```js
+axios.interceptors.request.use(...)
+```
+
+means:
+
+```text
+Axios, before every request,
+run this function.
+```
+
+---
+
+# Important Realization
+
+Interceptors are usually created:
+
+```text
+ONCE globally
+```
+
+inside:
+
+```text
+api.js
+axios.js
+axiosInstance.js
+```
+
+NOT inside components.
+
+---
+
+# 23. axios.create() & Enterprise Architecture
+
+# Why axios.create()?
+
+Suppose every request needs:
+
+- same base URL
+- same headers
+- same interceptors
+- same credentials
+
+Instead of repeating everything,
+companies create:
+
+```text
+custom axios instance
+```
+
+---
+
+# Basic Syntax
+
+```js
+const api = axios.create({
+
+   baseURL:
+      "https://jsonplaceholder.typicode.com",
+
+   headers: {
+      "Content-Type": "application/json"
+   }
+
+});
+```
+
+---
+
+# Example Usage
+
+```js
+api.get("/users")
+```
+
+because:
+
+```text
+baseURL automatically gets attached
+```
+
+---
+
+# Important Realization
+
+Enterprise apps usually create:
+
+```text
+single centralized axios instance
+```
+
+that handles:
+
+- base URL
+- auth
+- interceptors
+- headers
+- token handling
+- retries
+
+centrally.
+
+---
+
+# Company Project Understanding
+
+Your company project did NOT directly use axios interceptors.
+
+Instead, it used:
+
+```text
+centralized wrapper-function architecture
+```
+
+using:
+
+```js
+AxiosAPICall(...)
+```
+
+Both interceptor architecture and wrapper architecture solve same problem:
+
+```text
+centralized API handling
+```
+
+---
+
+# 24. localStorage vs sessionStorage vs Cookies
+
+# localStorage
+
+Browser-provided persistent storage.
+
+Data survives:
+
+- refresh
+- browser restart
+
+---
+
+# Example
+
+```js
+localStorage.setItem("token", "abc123");
+```
+
+---
+
+# sessionStorage
+
+Very similar to localStorage.
+
+BUT:
+
+```text
+Dies when browser tab closes
+```
+
+---
+
+# Cookies
+
+Cookies are browser-managed storage.
+
+Important special feature:
+
+```text
+Browser can automatically send cookies with requests.
+```
+
+---
+
+# VERY IMPORTANT DIFFERENCE
+
+# localStorage/sessionStorage
+
+```text
+Frontend must manually attach token.
+```
+
+Example:
+
+```js
+Authorization: Bearer token
+```
+
+usually using headers/interceptors.
+
+---
+
+# Cookies
+
+```text
+Browser may automatically send credentials.
+```
+
+This is why cookies are deeply related to:
+
+- session authentication
+- withCredentials
+- CSRF protection
+
+---
+
+# SIMPLE REAL-WORLD SUMMARY
+
+| Storage | Common Use |
+|---|---|
+| localStorage | JWT tokens |
+| sessionStorage | temporary session data |
+| cookies | server sessions/auth |
+
+---
+
 # Final Takeaway
 
 You now understand:
